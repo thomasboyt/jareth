@@ -24,6 +24,10 @@ beforeEach(async () => {
   await resetDb();
 });
 
+interface Params {
+  name: string;
+}
+
 describe('Jareth', () => {
   let jareth: Jareth;
 
@@ -37,7 +41,11 @@ describe('Jareth', () => {
 
   it('can run a select query', async () => {
     const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery('SELECT * FROM users', {}, (row) => row);
+      const query = handle.createQuery(
+        'SELECT id, name FROM users',
+        {},
+        (row) => row
+      );
       const rows = await query.many();
       return rows;
     });
@@ -50,10 +58,12 @@ describe('Jareth', () => {
   });
 
   it('uses query parameters', async () => {
+    const params: Params = { name: 'jeff' };
+
     const result = await jareth.withHandle(async (handle) => {
       const query = handle.createQuery(
-        'SELECT * FROM users WHERE name=${name}',
-        { name: 'jeff' },
+        'SELECT id, name FROM users WHERE name=${name}',
+        params,
         (row) => row
       );
       const row = await query.one();
@@ -64,21 +74,24 @@ describe('Jareth', () => {
   });
 
   it('throws for missing query parameters', async () => {
-    await jareth.withHandle(async (handle) => {
-      expect(() => {
-        handle.createQuery(
-          'SELECT * FROM users WHERE name=${name}',
-          {},
-          (row) => row
-        );
-      }).toThrow("Property 'name' doesn't exist.");
+    const promise = jareth.withHandle(async (handle) => {
+      const query = handle.createQuery(
+        'SELECT id, name FROM users WHERE name=${name}',
+        {},
+        (row) => row
+      );
+      await query.one();
     });
+    await expect(promise).rejects.toHaveProperty(
+      'originalMessage',
+      "Property 'name' doesn't exist."
+    );
   });
 
   it('maps rows using passed mapper', async () => {
     const result = await jareth.withHandle(async (handle) => {
       const query = handle.createQuery(
-        'SELECT * FROM users WHERE name=${name}',
+        'SELECT id, name FROM users WHERE name=${name}',
         { name: 'jeff' },
         (row) => row.name
       );
@@ -98,7 +111,7 @@ describe('Jareth', () => {
     // XXX: make sure result has the right static type in typescript here
     const result = await jareth.withHandle(async (handle) => {
       const query = handle.createQuery(
-        'SELECT * FROM users WHERE name=${name}',
+        'SELECT id, name FROM users WHERE name=${name}',
         { name: 'jeff' },
         mapDecode(UserCodec)
       );
@@ -117,7 +130,7 @@ describe('Jareth', () => {
 
     const promise = jareth.withHandle(async (handle) => {
       const query = handle.createQuery(
-        'SELECT * FROM users WHERE name=${name}',
+        'SELECT id, name FROM users WHERE name=${name}',
         { name: 'jeff' },
         mapDecode(InvalidUserCodec)
       );
@@ -129,5 +142,28 @@ describe('Jareth', () => {
       'message',
       'Invalid value undefined supplied to : {| id: number, whoops: string |}/whoops: string'
     );
+  });
+
+  it('camelCases column names', async () => {
+    const UserCodec = t.type({
+      id: t.number,
+      name: t.string,
+      maniaplanetName: t.string,
+    });
+
+    const result = await jareth.withHandle(async (handle) => {
+      const query = handle.createQuery(
+        "SELECT id, name, maniaplanet_name FROM users WHERE name='jeff'",
+        {},
+        mapDecode(UserCodec)
+      );
+      return query.one();
+    });
+
+    expect(result).toStrictEqual({
+      id: 1,
+      name: 'jeff',
+      maniaplanetName: 'MonsterDunk',
+    });
   });
 });

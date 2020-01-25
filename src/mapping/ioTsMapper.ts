@@ -1,6 +1,7 @@
 import * as t from 'io-ts';
 import { isLeft } from 'fp-ts/lib/Either';
 import { PathReporter } from 'io-ts/lib/PathReporter';
+import { mapCamelCase } from './mapCamelCase';
 
 // io-ts types are really complicated, so:
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -28,6 +29,7 @@ export function decodeOrThrow<T extends IoTypeC>(
   return result.right;
 }
 
+// TODO: probably shouldn't map camel case by default...
 export function mapDecode<T extends IoTypeC>(codec: T) {
-  return (row: any): t.TypeOf<T> => decodeOrThrow(codec, row);
+  return (row: any): t.TypeOf<T> => decodeOrThrow(codec, mapCamelCase(row));
 }

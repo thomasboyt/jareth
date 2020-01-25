@@ -22,7 +22,7 @@ export class Handle {
 
   createQuery<T>(
     queryStr: string,
-    queryArguments: UnknownMap,
+    queryArguments: object,
     mapper: (row: UnknownMap) => T
   ): Query<T> {
     return new Query(this, queryStr, queryArguments, mapper);

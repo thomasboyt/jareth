@@ -1,4 +1,4 @@
-import * as pgp from 'pg-promise';
+import pgp from 'pg-promise';
 import { IDatabase } from 'pg-promise';
 
 import { Handle } from './Handle';

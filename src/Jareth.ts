@@ -18,6 +18,13 @@ export class Jareth {
     });
   }
 
+  withTransaction<T>(cb: (handle: Handle) => Promise<T>): Promise<T> {
+    return this.db.tx((txn) => {
+      const handle = new Handle(txn);
+      return cb(handle);
+    });
+  }
+
   getPgpDb(): pgp.IDatabase<unknown, IClient> {
     return this.db;
   }

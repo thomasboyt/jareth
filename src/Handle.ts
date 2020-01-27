@@ -20,19 +20,18 @@ export class Handle {
     this.task = task;
   }
 
-  createQuery<T>(
-    queryStr: string,
-    queryArguments: object,
-    mapper: (row: UnknownMap) => T
-  ): Query<T> {
-    return new Query(this, queryStr, queryArguments, mapper);
+  createQuery(queryStr: string): Query {
+    return new Query(this, queryStr);
   }
 
   getPgpTask(): ITask<unknown> {
     return this.task;
   }
 
-  withTransaction(): void {
-    throw new Error('not implemented yet!');
+  withTransaction<T>(cb: (handle: Handle) => Promise<T>): Promise<T> {
+    return this.task.tx((txn) => {
+      const handle = new Handle(txn);
+      return cb(handle);
+    });
   }
 }

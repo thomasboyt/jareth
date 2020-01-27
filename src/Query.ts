@@ -1,95 +1,80 @@
 import { Handle } from './Handle';
+import { SQLQueryError } from './errors/SQLQueryError';
 
 interface UnknownMap {
   [key: string]: unknown;
 }
 
-class QueryError extends Error {
-  originalMessage: string;
+type RowMapper<T> = (row: UnknownMap) => T;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(pgErr: Error, query: string) {
-    const message = `Error executing query: ${pgErr.message}`;
-    super(message);
-    this.originalMessage = pgErr.message;
-    // TODO: maybe some day have some additional debug info...
-    // TODO: log query?
-  }
-}
 /**
  * A query is bound to a `Handle` that's used for execution.
  */
-export class Query<T> {
+export class Query {
   private handle: Handle;
   private queryString: string;
-  private queryArguments: object;
-  private rowMapper: (row: UnknownMap) => T;
 
-  constructor(
-    handle: Handle,
-    queryString: string,
-    queryArguments: object,
-    rowMapper: (row: UnknownMap) => T
-  ) {
+  constructor(handle: Handle, queryString: string) {
     this.handle = handle;
     this.queryString = queryString;
-    this.queryArguments = queryArguments;
-    this.rowMapper = rowMapper;
   }
 
-  async one(): Promise<T> {
+  async one<T>(params: object, rowMapper: RowMapper<T>): Promise<T> {
     const row = await this.handle
       .getPgpTask()
-      .one(this.queryString, this.queryArguments)
+      .one(this.queryString, params)
       .catch((err) => {
-        throw new QueryError(err, this.queryString);
+        throw new SQLQueryError(err, this.queryString);
       });
-    return this.rowMapper(row);
+    return rowMapper(row);
   }
 
-  async oneOrNone(): Promise<T | null> {
+  async oneOrNone<T>(
+    params: object,
+    rowMapper: RowMapper<T>
+  ): Promise<T | null> {
     const row = await this.handle
       .getPgpTask()
-      .oneOrNone(this.queryString, this.queryArguments)
+      .oneOrNone(this.queryString, params)
       .catch((err) => {
-        throw new QueryError(err, this.queryString);
+        throw new SQLQueryError(err, this.queryString);
       });
 
     if (!row) {
       return null;
     }
 
-    return this.rowMapper(row);
+    return rowMapper(row);
   }
 
-  async many(): Promise<T[]> {
+  async many<T>(params: object, rowMapper: RowMapper<T>): Promise<T[]> {
     const rows = await this.handle
       .getPgpTask()
-      .many(this.queryString, this.queryArguments)
+      .many(this.queryString, params)
       .catch((err) => {
-        throw new QueryError(err, this.queryString);
+        throw new SQLQueryError(err, this.queryString);
       });
 
-    return rows.map((row) => this.rowMapper(row));
+    return rows.map((row) => rowMapper(row));
   }
 
-  async manyOrNone(): Promise<T[]> {
+  async manyOrNone<T>(params: object, rowMapper: RowMapper<T>): Promise<T[]> {
     const rows = await this.handle
       .getPgpTask()
-      .manyOrNone(this.queryString, this.queryArguments)
+      .manyOrNone(this.queryString, params)
       .catch((err) => {
-        throw new QueryError(err, this.queryString);
+        throw new SQLQueryError(err, this.queryString);
       });
 
-    return rows.map((row) => this.rowMapper(row));
+    return rows.map((row) => rowMapper(row));
   }
 
-  async none(): Promise<void> {
+  async none(params: object): Promise<void> {
     await this.handle
       .getPgpTask()
-      .none(this.queryString, this.queryArguments)
+      .none(this.queryString, params)
       .catch((err) => {
-        throw new QueryError(err, this.queryString);
+        throw new SQLQueryError(err, this.queryString);
       });
   }
 }

@@ -41,13 +41,9 @@ describe('Jareth', () => {
 
   it('can run a select query', async () => {
     const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users',
-        {},
-        (row) => row
-      );
-      const rows = await query.many();
-      return rows;
+      return handle
+        .createQuery('SELECT id, name FROM users')
+        .many({}, (row) => row);
     });
 
     expect(result).toStrictEqual([
@@ -60,27 +56,20 @@ describe('Jareth', () => {
   it('uses query parameters', async () => {
     const params: Params = { name: 'jeff' };
 
-    const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users WHERE name=${name}',
-        params,
-        (row) => row
-      );
-      const row = await query.one();
-      return row;
+    const result = await jareth.withHandle((handle) => {
+      return handle
+        .createQuery('SELECT id, name FROM users WHERE name=${name}')
+        .one(params, (row) => row);
     });
 
     expect(result).toStrictEqual({ id: 1, name: 'jeff' });
   });
 
   it('throws for missing query parameters', async () => {
-    const promise = jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users WHERE name=${name}',
-        {},
-        (row) => row
-      );
-      await query.one();
+    const promise = jareth.withHandle((handle) => {
+      return handle
+        .createQuery('SELECT id, name FROM users WHERE name=${name}')
+        .one({}, (row) => row);
     });
     await expect(promise).rejects.toHaveProperty(
       'originalMessage',
@@ -90,13 +79,9 @@ describe('Jareth', () => {
 
   it('maps rows using passed mapper', async () => {
     const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users WHERE name=${name}',
-        { name: 'jeff' },
-        (row) => row.name
-      );
-      const row = await query.one();
-      return row;
+      return handle
+        .createQuery('SELECT id, name FROM users WHERE name=${name}')
+        .one({ name: 'jeff' }, (row) => row.name);
     });
 
     expect(result).toBe('jeff');
@@ -110,13 +95,9 @@ describe('Jareth', () => {
 
     // XXX: make sure result has the right static type in typescript here
     const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users WHERE name=${name}',
-        { name: 'jeff' },
-        mapDecode(UserCodec)
-      );
-      const row = await query.one();
-      return row;
+      return handle
+        .createQuery('SELECT id, name FROM users WHERE name=${name}')
+        .one({ name: 'jeff' }, mapDecode(UserCodec));
     });
 
     expect(result).toStrictEqual({ id: 1, name: 'jeff' });
@@ -128,14 +109,10 @@ describe('Jareth', () => {
       whoops: t.string,
     });
 
-    const promise = jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        'SELECT id, name FROM users WHERE name=${name}',
-        { name: 'jeff' },
-        mapDecode(InvalidUserCodec)
-      );
-      const row = await query.one();
-      return row;
+    const promise = jareth.withHandle((handle) => {
+      return handle
+        .createQuery('SELECT id, name FROM users WHERE name=${name}')
+        .one({ name: 'jeff' }, mapDecode(InvalidUserCodec));
     });
 
     await expect(promise).rejects.toHaveProperty(
@@ -152,12 +129,11 @@ describe('Jareth', () => {
     });
 
     const result = await jareth.withHandle(async (handle) => {
-      const query = handle.createQuery(
-        "SELECT id, name, maniaplanet_name FROM users WHERE name='jeff'",
-        {},
-        mapDecode(UserCodec)
-      );
-      return query.one();
+      return handle
+        .createQuery(
+          "SELECT id, name, maniaplanet_name FROM users WHERE name='jeff'"
+        )
+        .one({}, mapDecode(UserCodec));
     });
 
     expect(result).toStrictEqual({

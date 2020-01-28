@@ -20,15 +20,14 @@ const jareth = new Jareth(DATABASE_URL);
 
 // use withHandle() to bind to a connection and make a query
 const result = await jareth.withHandle(async (handle) => {
-  // createQuery() will validate that you bound the correct arguments at
-  // runtime
   const query = handle.createQuery(
     'SELECT * FROM users WHERE id=${userId}',
+  );
+
+  return query.one(
     {userId: 1},
     mapDecode(UserCodec)
   );
-
-  return query.one();
 });
 
 // TypeScript will type "result" as typeof UserCodec
